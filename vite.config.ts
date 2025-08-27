@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
      tailwindcss()
   ],
-  base: "/",
+  base: "/online_tutoring_dev",
   server: {
     host: '0.0.0.0',   // listen on all addresses
     port: 5173,        // or your custom port
