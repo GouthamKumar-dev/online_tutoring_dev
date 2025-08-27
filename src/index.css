@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "@fontsource/poppins";
+
+/* Global Font */
+body {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Custom Loading Animations */
+@keyframes wave {
+  0%, 100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleY(1.5);
+    opacity: 0.7;
+  }
+}
+
+.animate-wave {
+  animation: wave 1.2s ease-in-out infinite;
+}
