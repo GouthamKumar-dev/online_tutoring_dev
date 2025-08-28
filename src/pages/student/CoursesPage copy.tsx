@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { COLOR_CLASSES } from "../../constants/colors";
 import StudentLoginModal from "../../components/StudentLoginModal";
@@ -9,19 +9,13 @@ import {
   fetchCourses,
   fetchAllCourses,
 } from "../../features/courses/coursesSlice";
-import { fetchCategories } from "../../features/category/categorySlice";
 import type { RootState, AppDispatch } from "../../app/store";
 
 const CoursesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
-
-  // load categories for the filter sidebar
-  useEffect(() => {
-    // fetch categories for drilling
-    dispatch(fetchCategories());
-  }, [dispatch]);
 
   // Redux state
   const {
@@ -41,15 +35,6 @@ const CoursesPage: React.FC = () => {
 
   const loading = categoriesLoading || coursesLoading;
   const [showFilters, setShowFilters] = useState(false);
-
-  // Single-category drilling state (only one category can be selected at a time)
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null
-  );
-  // expanded subcategories ids for drilling view
-  const [expandedSubcats, setExpandedSubcats] = useState<
-    Record<number, boolean>
-  >({});
 
   // Separate temp filters for user selection (not applied until Apply Filter is clicked)
   const [tempFilters, setTempFilters] = useState<{
@@ -128,21 +113,25 @@ const CoursesPage: React.FC = () => {
   }, [dispatch, appliedFilters, categories, page, limit]);
 
   // Get subcategories for selected categories
-  const getSubcategoriesForSelectedCategories = useMemo(() => {
-    if (!selectedCategoryId) return [] as any[];
+  const getSubcategoriesForSelectedCategories = () => {
+    if (!tempFilters.categories.length) return [];
 
-    const category = categories.find(
-      (cat) => (cat.categoryId || cat.id) === selectedCategoryId
-    );
-    if (!category) return [] as any[];
-
-    // return a deep list (tree) of subcategory nodes for recursive rendering
-    return category.subcategories || category.children || [];
-  }, [categories, selectedCategoryId]);
-
-  // toggle expand for a subcategory id
-  const toggleExpand = (id: number) => {
-    setExpandedSubcats((prev) => ({ ...prev, [id]: !prev[id] }));
+    const subcategories: string[] = [];
+    tempFilters.categories.forEach((categoryName) => {
+      const category = categories.find(
+        (cat) => cat.categoryName === categoryName
+      );
+      if (category && category.subcategories) {
+        category.subcategories.forEach((subcat) => {
+          if (subcat.subcategoryName) {
+            if (!subcategories.includes(subcat.subcategoryName)) {
+              subcategories.push(subcat.subcategoryName);
+            }
+          }
+        });
+      }
+    });
+    return subcategories;
   };
 
   // Handle initial filters from URL params
@@ -167,56 +156,27 @@ const CoursesPage: React.FC = () => {
     type: "categories" | "subcategories",
     value: string
   ) => {
-    if (type === "categories") {
-      // single selection only: replace current category selection
-      const currentlySelected = tempFilters.categories[0];
-      if (currentlySelected === value) {
-        // deselect
-        setTempFilters((prev) => ({
-          ...prev,
-          categories: [],
-          subcategories: [],
-        }));
-        setSelectedCategoryId(null);
-      } else {
-        // find category id for the value (name)
-        const selectedCat = categories.find(
-          (cat) => cat.categoryName === value
-        );
-        setTempFilters((prev) => ({
-          ...prev,
-          categories: [value],
-          subcategories: [],
-        }));
-        setSelectedCategoryId(
-          selectedCat
-            ? typeof selectedCat.categoryId === "number"
-              ? selectedCat.categoryId
-              : typeof selectedCat.id === "number"
-              ? selectedCat.id
-              : null
-            : null
-        );
-      }
-      return;
-    }
-
-    // subcategories: enforce single selection only
     setTempFilters((prev) => ({
       ...prev,
-      subcategories: prev.subcategories[0] === value ? [] : [value],
+      [type]: prev[type].includes(value)
+        ? prev[type].filter((item) => item !== value)
+        : [...prev[type], value],
     }));
   };
 
   const handleApplyFilters = () => {
     setAppliedFilters({ ...tempFilters });
-    setShowFilters(false);
+
     // Update URL search params
     const searchParams = new URLSearchParams();
     if (tempFilters.search) searchParams.set("search", tempFilters.search);
     if (tempFilters.categories.length > 0) {
       searchParams.set("category", tempFilters.categories[0]);
     }
+    navigate({
+      pathname: location.pathname,
+      search: searchParams.toString(),
+    });
   };
 
   const clearFilters = () => {
@@ -229,9 +189,12 @@ const CoursesPage: React.FC = () => {
     };
     setTempFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
-    // close any opened category/subcategory drills
-    setSelectedCategoryId(null);
-    setExpandedSubcats({});
+
+    // Clear URL params
+    navigate({
+      pathname: location.pathname,
+      search: "",
+    });
   };
 
   const handleBookNow = (course: any) => {
@@ -271,28 +234,35 @@ const CoursesPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center py-12 md:py-20">
+          <div className="animate-spin rounded-full h-8 w-8 md:h-12 md:w-12 border-b-2 border-purple-600"></div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-2 md:mb-8">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 md:mb-4">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
             {appliedFilters.categories.length > 0
               ? `${appliedFilters.categories.join(", ")} Courses`
               : "All Courses"}
           </h1>
-          <p className="text-sm md:text-lg text-gray-600">
+          <p className="text-base md:text-lg text-gray-600">
             Discover the perfect course for your learning journey
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row  gap-6 md:gap-8">
+        <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
           {/* Mobile Filter Toggle */}
-          <div className="md:hidden">
+          <div className="lg:hidden">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`${COLOR_CLASSES.textPrimary} bg-white border px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2`}
+              className={`w-full ${COLOR_CLASSES.bgPrimary} text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2`}
             >
               <svg
-                className="w-4 h-4"
+                className="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -301,10 +271,10 @@ const CoursesPage: React.FC = () => {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M3 4h18M3 10h18M3 16h18"
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"
                 />
               </svg>
-              Filter
+              Filters{" "}
               {appliedFilters.categories.length +
                 appliedFilters.subcategories.length >
                 0 &&
@@ -315,40 +285,28 @@ const CoursesPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="w-full">
-            <div className="w-full flex  mb-8 md:gap-2">
-              {/* All Filter button for opening drawer (visible on md+) */}
-              <div className="flex items-center">
+          {/* Sidebar Filters */}
+          <div
+            className={`lg:w-1/4 ${showFilters ? "block" : "hidden lg:block"}`}
+          >
+            <div className="bg-white rounded-lg shadow-md p-4 md:p-6 sticky top-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                  Filters
+                </h3>
                 <button
-                  onClick={() => setShowFilters(true)}
-                  className={`hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${COLOR_CLASSES.textPrimary} bg-white`}
+                  onClick={clearFilters}
+                  className={`${COLOR_CLASSES.textPrimary} ${COLOR_CLASSES.hoverTextPrimary} text-sm`}
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 4h18M3 10h18M3 16h18"
-                    />
-                  </svg>
-                  <span>Filter</span>
-                  {tempFilters.categories.length +
-                    tempFilters.subcategories.length >
-                    0 && (
-                    <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100">
-                      {tempFilters.categories.length +
-                        tempFilters.subcategories.length}
-                    </span>
-                  )}
+                  Clear All
                 </button>
               </div>
-              {/* Global Search Bar */}
-              <div className="relative w-full max-w-2xl md:ml-4">
+
+              {/* Search */}
+              <div className="mb-4 md:mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search Courses
+                </label>
                 <input
                   type="text"
                   value={tempFilters.search}
@@ -358,40 +316,89 @@ const CoursesPage: React.FC = () => {
                       search: e.target.value,
                     }))
                   }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleApplyFilters();
-                  }}
-                  placeholder="What you want to learn"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#B980B6] focus:ring-2 focus:ring-[#B980B6] focus:outline-none text-base bg-white shadow-sm placeholder-gray-400"
-                  style={{ boxShadow: "0px 2px 8px 0px #0000000A" }}
+                  placeholder="Search courses..."
+                  className={`w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-md ${COLOR_CLASSES.focusRingPrimary} focus:outline-none focus:ring-2`}
                 />
-                <svg
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#B980B6]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              </div>
+
+              {/* Categories */}
+              <div className="mb-4 md:mb-6">
+                <h4 className="font-medium text-gray-900 mb-3">Categories :</h4>
+                <div className="space-y-2">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() =>
+                        handleFilterChange(
+                          "categories",
+                          category.categoryName || ""
+                        )
+                      }
+                      className={`block w-full px-3 py-2 text-left text-sm rounded-md transition-colors ${
+                        tempFilters.categories.includes(
+                          category.categoryName || ""
+                        )
+                          ? `${COLOR_CLASSES.bgPrimary} text-white`
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {category.categoryName || "Unnamed Category"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Subcategories */}
+              {getSubcategoriesForSelectedCategories().length > 0 && (
+                <div className="mb-4 md:mb-6">
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Sub Categories :
+                  </h4>
+                  <div className="space-y-2">
+                    {getSubcategoriesForSelectedCategories().map(
+                      (subcategory) => (
+                        <button
+                          key={subcategory}
+                          onClick={() =>
+                            handleFilterChange("subcategories", subcategory)
+                          }
+                          className={`block w-full px-3 py-2 text-left text-sm rounded-md transition-colors ${
+                            tempFilters.subcategories.includes(subcategory)
+                              ? `${COLOR_CLASSES.bgSecondary} text-white`
+                              : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          {subcategory}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Apply Filter Button */}
+              <div className="mt-6 space-y-3">
+                <button
+                  onClick={handleApplyFilters}
+                  className={`w-full ${COLOR_CLASSES.bgPrimary} ${COLOR_CLASSES.hoverBgPrimary} text-white px-4 py-2 rounded-md font-medium transition duration-200`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z"
-                  />
-                </svg>
-                {tempFilters.search && (
-                  <button
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#B980B6] text-sm focus:outline-none"
-                    onClick={() => {
-                      setTempFilters((prev) => ({ ...prev, search: "" }));
-                      setAppliedFilters((prev) => ({ ...prev, search: "" }));
-                      handleApplyFilters();
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
+                  Apply Filter (
+                  {tempFilters.categories.length +
+                    tempFilters.subcategories.length}
+                  )
+                </button>
+                <button
+                  onClick={clearFilters}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium transition duration-200"
+                >
+                  Clear
+                </button>
               </div>
             </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:w-3/4">
             {/* Active Filters */}
             {(appliedFilters.categories.length > 0 ||
               appliedFilters.subcategories.length > 0 ||
@@ -529,28 +536,15 @@ const CoursesPage: React.FC = () => {
               </div>
             )}
 
-            {/* Main Content */}
+            {/* Course Grid */}
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse"
-                  >
-                    <div className="h-48 bg-gray-200" />
-                    <div className="p-6">
-                      <div className="h-3 bg-gray-200 rounded w-1/3 mb-3" />
-                      <div className="h-5 bg-gray-200 rounded w-3/4 mb-4" />
-                      <div className="flex items-center justify-between">
-                        <div className="h-8 bg-gray-200 rounded w-24" />
-                        <div className="h-8 bg-gray-200 rounded w-20" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex justify-center items-center py-12">
+                <div
+                  className={`animate-spin rounded-full h-8 w-8 border-b-2 ${COLOR_CLASSES.borderPrimary}`}
+                ></div>
               </div>
             ) : courses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map((course: any) => (
                   <div
                     key={course.classId}
@@ -609,155 +603,28 @@ const CoursesPage: React.FC = () => {
                 </p>
               </div>
             )}
+
+            {/* No Results */}
+            {!loading && courses.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-gray-400 text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  No courses found
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Try adjusting your search criteria or filters
+                </p>
+                <button
+                  onClick={clearFilters}
+                  className={`${COLOR_CLASSES.bgPrimary} ${COLOR_CLASSES.hoverBgPrimary} text-white px-6 py-2 rounded-md`}
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
-      {/* Drawer overlay for filters */}
-      {showFilters && (
-        <div className="absolute inset-0 z-50 flex">
-          {/* Backdrop with blur inside the page container */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setShowFilters(false)}
-          />
-
-          {/* Panel (inside the page) */}
-          <aside className="relative w-full max-w-sm bg-white shadow-xl p-6 overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Filters</h3>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="text-gray-500"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Reuse filter content: Categories */}
-            <div className="mb-4">
-              <h4 className="font-medium text-gray-900 mb-3">Categories :</h4>
-              <div className="space-y-2">
-                {categories.map((category) => {
-                  const catKey =
-                    category.categoryId ||
-                    category.id ||
-                    category.categoryName ||
-                    Math.random();
-                  const catName =
-                    category.categoryName ||
-                    category.name ||
-                    "Unnamed Category";
-                  const isSelected = tempFilters.categories[0] === catName;
-                  return (
-                    <button
-                      key={String(catKey)}
-                      onClick={() => handleFilterChange("categories", catName)}
-                      className={`block w-full px-3 py-2 text-left text-sm rounded-md transition-colors ${
-                        isSelected
-                          ? `${COLOR_CLASSES.bgPrimary} text-white`
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
-                    >
-                      {catName}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Subcategories (drill down) */}
-            {getSubcategoriesForSelectedCategories.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-medium text-gray-900 mb-3">
-                  Sub Categories :
-                </h4>
-                <div className="space-y-2">
-                  {getSubcategoriesForSelectedCategories.map((node: any) => {
-                    const renderNode = (n: any, depth = 0) => {
-                      const name =
-                        n.subcategoryName ||
-                        n.name ||
-                        n.categoryName ||
-                        "Unnamed";
-                      const id = n.subcategoryId || n.categoryId || n.id;
-                      const isChecked =
-                        tempFilters.subcategories.includes(name);
-                      return (
-                        <div
-                          key={String(id || name)}
-                          className={`pl-${depth * 4}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <button
-                              onClick={() => {
-                                handleFilterChange("subcategories", name);
-                                if (n.children && n.children.length > 0 && id) {
-                                  setExpandedSubcats((prev) => ({
-                                    ...prev,
-                                    [id]: true,
-                                  }));
-                                }
-                              }}
-                              className={`text-left w-full px-3 py-2 rounded-md text-sm transition-colors ${
-                                isChecked
-                                  ? `${COLOR_CLASSES.bgSecondary} text-white`
-                                  : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-                              }`}
-                            >
-                              {name}
-                            </button>
-                            {n.children && n.children.length > 0 && (
-                              <button
-                                onClick={() => toggleExpand(id)}
-                                className="ml-2 text-xs text-gray-500"
-                                aria-label={`Toggle ${name} children`}
-                              >
-                                {expandedSubcats[id] ? "-" : "+"}
-                              </button>
-                            )}
-                          </div>
-                          {n.children &&
-                            n.children.length > 0 &&
-                            expandedSubcats[id] && (
-                              <div className="ml-4 mt-2 space-y-2">
-                                {n.children.map((c: any) =>
-                                  renderNode(c, depth + 1)
-                                )}
-                              </div>
-                            )}
-                        </div>
-                      );
-                    };
-
-                    return renderNode(node, 0);
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={handleApplyFilters}
-                className={`${COLOR_CLASSES.bgPrimary} ${COLOR_CLASSES.hoverBgPrimary} text-white px-4 py-2 rounded-md`}
-              >
-                Apply Filter (
-                {tempFilters.categories.length +
-                  tempFilters.subcategories.length}
-                )
-              </button>
-              <button
-                onClick={() => {
-                  clearFilters();
-                  setShowFilters(false);
-                }}
-                className="px-4 py-2 border rounded-md"
-              >
-                Clear
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
 
       {/* Student Login Modal for Course Booking */}
       <StudentLoginModal

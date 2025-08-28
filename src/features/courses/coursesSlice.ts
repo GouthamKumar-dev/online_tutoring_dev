@@ -40,35 +40,50 @@ export interface Course {
   image?: string;
 }
 
+interface CoursesMeta {
+  total: number;
+  limit: number;
+  page: number;
+  totalPages: number;
+  offset: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 interface CoursesState {
-  courses: Course[];
+  data: Course[];
+  meta: CoursesMeta | null;
   loading: boolean;
   error?: string;
 }
 
 const initialState: CoursesState = {
-  courses: [],
+  data: [],
+  meta: null,
   loading: false,
 };
 
 // Thunks
 export const fetchCourses = createAsyncThunk(
   "courses/fetchCourses",
-  async (filters?: { 
-    categoryId?: string; 
-    subcategoryId?: string; 
+  async (filters?: {
+    page?: number;
+    limit?: number;
+    categoryId?: string;
+    subcategoryId?: string;
     search?: string;
     level?: string;
     language?: string;
   }) => {
     const params = new URLSearchParams();
-    if (filters?.categoryId) params.append('categoryId', filters.categoryId);
-    if (filters?.subcategoryId) params.append('subcategoryId', filters.subcategoryId);
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.level) params.append('level', filters.level);
-    if (filters?.language) params.append('language', filters.language);
-    
-    const res = await baseAxios.get(`/courses?${params.toString()}`);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
+    if (filters?.categoryId) params.append("categoryId", filters.categoryId);
+    if (filters?.subcategoryId) params.append("subcategoryId", filters.subcategoryId);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.level) params.append("level", filters.level);
+    if (filters?.language) params.append("language", filters.language);
+    const res = await baseAxios.get(`/courses/filter?${params.toString()}`);
     return res.data;
   }
 );
@@ -98,7 +113,16 @@ const coursesSlice = createSlice({
       })
       .addCase(fetchCourses.fulfilled, (state, action) => {
         state.loading = false;
-        state.courses = action.payload;
+        if (action.payload && action.payload.data && action.payload.meta) {
+          state.data = action.payload.data;
+          state.meta = action.payload.meta;
+        } else if (Array.isArray(action.payload)) {
+          state.data = action.payload;
+          state.meta = null;
+        } else {
+          state.data = [];
+          state.meta = null;
+        }
       })
       .addCase(fetchCourses.rejected, (state, action) => {
         state.loading = false;
@@ -110,7 +134,16 @@ const coursesSlice = createSlice({
       })
       .addCase(fetchAllCourses.fulfilled, (state, action) => {
         state.loading = false;
-        state.courses = action.payload;
+        if (Array.isArray(action.payload)) {
+          state.data = action.payload;
+          state.meta = null;
+        } else if (action.payload && action.payload.data) {
+          state.data = action.payload.data;
+          state.meta = action.payload.meta || null;
+        } else {
+          state.data = [];
+          state.meta = null;
+        }
       })
       .addCase(fetchAllCourses.rejected, (state, action) => {
         state.loading = false;

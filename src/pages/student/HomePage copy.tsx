@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import bgWorld from "../../assets/bg-world.png";
 import illustrationImg1 from "../../assets/Group_1.png";
@@ -16,37 +16,10 @@ import { fetchCategories } from "../../features/category/categorySlice";
 import { fetchPremiumStaffs } from "../../features/staff/staffSlice";
 import type { RootState, AppDispatch } from "../../app/store";
 import baseAxios from "../../features/auth/baseAxios";
-import { motion, useReducedMotion } from "framer-motion";
-
-// Preferences
-const HomePageRevealHelpers = (() => {
-  // container + item variants for staggered reveal
-  const container = (stagger = 0.08, delayChildren = 0.12) => ({
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: stagger,
-        delayChildren,
-        when: "beforeChildren",
-      },
-    },
-  });
-
-  const item = {
-    hidden: { opacity: 0, y: 24 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.55 },
-    },
-  };
-
-  return { container, item };
-})();
+import { motion } from "framer-motion";
 
 const HomePage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const shouldReduceMotion = useReducedMotion();
   const {
     categories,
     loading: categoriesLoading,
@@ -58,10 +31,6 @@ const HomePage: React.FC = () => {
     error: staffsError,
   } = useSelector((state: RootState) => state.staff);
   const [searchQuery, setSearchQuery] = useState("");
-  const navigate = useNavigate();
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
@@ -74,33 +43,6 @@ const HomePage: React.FC = () => {
     dispatch(fetchPremiumStaffs());
   }, [dispatch]);
 
-  // Debounced search for suggestions
-  useEffect(() => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
-      setSuggestions([]);
-      setSuggestionsLoading(false);
-      return;
-    }
-
-    setSuggestionsLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        const res = await baseAxios.get(
-          `/courses/filter?search=${encodeURIComponent(searchQuery)}&limit=6`
-        );
-        const payload = res.data;
-        const items = Array.isArray(payload) ? payload : payload.data || [];
-        setSuggestions(items || []);
-        setShowSuggestions(true);
-      } catch (err) {
-        setSuggestions([]);
-      } finally {
-        setSuggestionsLoading(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(t);
-  }, [searchQuery]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
@@ -172,83 +114,16 @@ const HomePage: React.FC = () => {
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                           />
                         </svg>
-                        <div className="relative flex-1">
-                          <input
-                            type="text"
-                            placeholder="What you want to learn"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            onKeyPress={(e) =>
-                              e.key === "Enter" && handleSearch()
-                            }
-                            onFocus={() =>
-                              searchQuery.length >= 2 &&
-                              setShowSuggestions(true)
-                            }
-                            className="w-full text-sm md:text-base text-gray-700 placeholder-gray-400 border-none outline-none"
-                            aria-autocomplete="list"
-                            aria-controls="hp-suggestions"
-                          />
-
-                          {/* Suggestions dropdown */}
-                          {showSuggestions &&
-                            (suggestions.length > 0 || suggestionsLoading) && (
-                              <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                                {suggestionsLoading ? (
-                                  <div className="p-3 text-sm text-gray-500">
-                                    Searching...
-                                  </div>
-                                ) : (
-                                  <ul id="hp-suggestions" className="divide-y">
-                                    {suggestions.map((s: any) => (
-                                      <li
-                                        key={s.classId || s.id}
-                                        className="p-3 hover:bg-gray-50 cursor-pointer"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                          setShowSuggestions(false);
-                                          // Navigate to course page
-                                          if (s.classId)
-                                            navigate(`/course/${s.classId}`);
-                                          else
-                                            navigate(
-                                              `/courses?search=${encodeURIComponent(
-                                                s.className ||
-                                                  s.fullName ||
-                                                  searchQuery
-                                              )}`
-                                            );
-                                        }}
-                                      >
-                                        <div className="font-medium text-sm text-gray-800">
-                                          {s.className || s.fullName || s.name}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                          {s.category?.categoryName || ""}
-                                        </div>
-                                      </li>
-                                    ))}
-                                    <li className="p-2">
-                                      <button
-                                        className="w-full text-left text-sm text-primary-600 hover:underline"
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        onClick={() => {
-                                          setShowSuggestions(false);
-                                          navigate(
-                                            `/courses?search=${encodeURIComponent(
-                                              searchQuery
-                                            )}`
-                                          );
-                                        }}
-                                      >
-                                        See all results for "{searchQuery}"
-                                      </button>
-                                    </li>
-                                  </ul>
-                                )}
-                              </div>
-                            )}
-                        </div>
+                        <input
+                          type="text"
+                          placeholder="What you want to learn"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && handleSearch()
+                          }
+                          className="flex-1 text-sm md:text-base text-gray-700 placeholder-gray-400 border-none outline-none"
+                        />
                         <button
                           onClick={handleSearch}
                           className={`ml-2 px-3 py-1 md:px-4 md:py-2 ${COLOR_CLASSES.bgPrimary} text-white rounded-lg text-sm md:text-base font-medium hover:opacity-90 transition-opacity`}
@@ -338,18 +213,8 @@ const HomePage: React.FC = () => {
             </div>
 
             {categoriesLoading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="rounded-2xl h-32 md:h-36 lg:h-40 flex flex-col justify-end p-3 md:p-4 bg-white shadow-sm overflow-hidden animate-pulse"
-                  >
-                    <div className="absolute inset-0 bg-gray-200" />
-                    <div className="relative z-10">
-                      <div className="h-4 bg-gray-200 rounded w-3/5 mb-2" />
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-12">
+                <div className="text-gray-400">Loading categories...</div>
               </div>
             )}
 
@@ -366,67 +231,53 @@ const HomePage: React.FC = () => {
                 initial={{ x: 100 }}
                 animate={{ x: 0 }}
                 transition={{
-                  delay: 0.08,
+                  delay: 0.1,
                   type: "tween",
-                  duration: 0.8,
+                  duration: 1,
                 }}
               >
-                {categories.length === 0 ? (
-                  <div className="col-span-full text-center py-12">
-                    <div className="text-gray-500">No categories found</div>
-                  </div>
-                ) : (
-                  <motion.div
-                    variants={
-                      shouldReduceMotion
-                        ? undefined
-                        : HomePageRevealHelpers.container(0.06, 0.12)
-                    }
-                    initial={shouldReduceMotion ? undefined : "hidden"}
-                    whileInView={shouldReduceMotion ? undefined : "visible"}
-                    viewport={{ once: true, amount: 0.15 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4  gap-4 md:gap-6"
-                  >
-                    {categories.map((category: any, index: number) => (
-                      <motion.div
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4  gap-4 md:gap-6">
+                  {categories.length === 0 ? (
+                    <div className="col-span-full text-center py-12">
+                      <div className="text-gray-500">No categories found</div>
+                    </div>
+                  ) : (
+                    categories.map((category: any, index: number) => (
+                      <Link
                         key={category.categoryId || category.id || index}
-                        variants={HomePageRevealHelpers.item}
+                        to={`/courses?category=${category.categoryName}`}
+                        className="group"
                       >
-                        <Link
-                          to={`/courses?category=${category.categoryName}`}
-                          className="group"
-                        >
-                          <div className="rounded-2xl h-32 md:h-36 lg:h-40 flex flex-col justify-end p-3 md:p-4 text-white font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition duration-200 hover:scale-105 relative overflow-hidden">
-                            {/* Background image if available */}
-                            {category.categoryImageUrl && (
-                              <div
-                                className="absolute inset-0 bg-cover bg-center"
-                                style={{
-                                  backgroundImage: `url(${baseAxios.defaults.baseURL?.replace(
-                                    "/api",
-                                    ""
-                                  )}${category.categoryImageUrl})`,
-                                }}
-                              />
-                            )}
-
-                            {/* Gradient overlay */}
+                        <div className="rounded-2xl h-32 md:h-36 lg:h-40 flex flex-col justify-end p-3 md:p-4 text-white font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition duration-200 hover:scale-105 relative overflow-hidden">
+                          {/* Background image if available */}
+                          {category.categoryImageUrl && (
                             <div
-                              className={`absolute inset-0 bg-gradient-to-t from-[#582F4D] via-[#582F4D]/50 to-transparent`}
+                              className="absolute inset-0 bg-cover bg-center"
+                              style={{
+                                backgroundImage: `url(${baseAxios.defaults.baseURL?.replace(
+                                  "/api",
+                                  ""
+                                )}${category.categoryImageUrl})`,
+                              }}
                             />
+                          )}
 
-                            {/* Category name */}
-                            <div className="relative z-10">
-                              <span className="text-base md:text-lg font-bold">
-                                {category.categoryName}
-                              </span>
-                            </div>
+                          {/* Gradient overlay */}
+                          <div
+                            className={`absolute inset-0 bg-gradient-to-t from-[#582F4D] via-[#582F4D]/50 to-transparent`}
+                          />
+
+                          {/* Category name */}
+                          <div className="relative z-10">
+                            <span className="text-base md:text-lg font-bold">
+                              {category.categoryName}
+                            </span>
                           </div>
-                        </Link>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
               </motion.div>
             )}
           </div>
@@ -451,17 +302,8 @@ const HomePage: React.FC = () => {
             </div>
 
             {staffsLoading && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-xl p-4 md:p-6 text-center shadow-sm transition duration-200 sm:min-w-[15rem] animate-pulse"
-                  >
-                    <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-3 md:mb-4" />
-                    <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto mb-2" />
-                    <div className="h-3 bg-gray-200 rounded w-3/4 mx-auto" />
-                  </div>
-                ))}
+              <div className="text-center py-12">
+                <div className="text-gray-400">Loading premium staff...</div>
               </div>
             )}
 
@@ -478,66 +320,56 @@ const HomePage: React.FC = () => {
                 initial={{ x: -100 }}
                 animate={{ x: 0 }}
                 transition={{
-                  delay: 0.08,
+                  delay: 0.1,
                   type: "tween",
-                  duration: 0.8,
+                  duration: 1,
                 }}
               >
-                {premiumStaffs.length === 0 ? (
-                  <div className="col-span-full text-center py-12">
-                    <div className="text-gray-500">No premium staff found</div>
-                  </div>
-                ) : (
-                  <motion.div
-                    variants={
-                      shouldReduceMotion
-                        ? undefined
-                        : HomePageRevealHelpers.container(0.06, 0.12)
-                    }
-                    initial={shouldReduceMotion ? undefined : "hidden"}
-                    whileInView={shouldReduceMotion ? undefined : "visible"}
-                    viewport={{ once: true, amount: 0.15 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-                  >
-                    {premiumStaffs.map((staff: any) => (
-                      <motion.div
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {premiumStaffs.length === 0 ? (
+                    <div className="col-span-full text-center py-12">
+                      <div className="text-gray-500">
+                        No premium staff found
+                      </div>
+                    </div>
+                  ) : (
+                    premiumStaffs.map((staff: any) => (
+                      <div
                         key={staff.staffId}
-                        variants={HomePageRevealHelpers.item}
+                        className="bg-white rounded-xl p-4 md:p-6 text-center shadow-md hover:shadow-lg transition duration-200 sm:min-w-[15rem]"
                       >
-                        <div className="bg-white rounded-xl p-4 md:p-6 text-center shadow-md hover:shadow-lg transition duration-200 sm:min-w-[15rem]">
-                          <div className="w-32 h-32 bg-yellow-400 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center overflow-hidden">
-                            {staff.staffImageUrl ? (
+                        <div className="w-32 h-32 bg-yellow-400 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center overflow-hidden">
+                          {staff.staffImageUrl ? (
+                            <img
+                              src={`${baseAxios.defaults.baseURL?.replace(
+                                "/api",
+                                ""
+                              )}${staff.staffImageUrl}`}
+                              alt={staff.staffName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center overflow-hidden">
                               <img
-                                src={`${baseAxios.defaults.baseURL?.replace(
-                                  "/api",
-                                  ""
-                                )}${staff.staffImageUrl}`}
-                                alt={staff.staffName}
+                                src={default_user_profile}
+                                alt="staff"
                                 className="w-full h-full object-cover"
                               />
-                            ) : (
-                              <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full mx-auto mb-3 md:mb-4 flex items-center justify-center overflow-hidden">
-                                <img
-                                  src={default_user_profile}
-                                  alt="staff"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                          </div>
-                          <h3 className="text-lg font-medium text-gray-900 mb-2">
-                            {staff.staffName}
-                          </h3>
-                          <div className="flex justify-center">
-                            <p className="text-sm text-black text-center font-normal w-[12rem]">
-                              {staff.staffDetails}
-                            </p>
-                          </div>
+                            </div>
+                          )}
                         </div>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                )}
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          {staff.staffName}
+                        </h3>
+                        <div className="flex justify-center">
+                          <p className="text-sm text-black text-center font-normal w-[12rem]">
+                            {staff.staffDetails}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </motion.div>
             )}
           </div>

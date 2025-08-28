@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import { COLOR_CLASSES } from "../constants/colors";
@@ -64,6 +65,7 @@ const navItems = [
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
 
   interface LogoutEvent
     extends React.MouseEvent<HTMLAnchorElement, MouseEvent> {}
@@ -71,13 +73,19 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const handleLogout = async (e: LogoutEvent): Promise<void> => {
     e.preventDefault();
     try {
-      await baseAxios.post("/auth/logout"); // Optional: clear backend session/cookie
+      // Clear client-side auth immediately to avoid ProtectedRoute briefly
+      // redirecting to /unauthorized while we navigate to /login.
+      dispatch(logout());
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Fire-and-forget server logout; don't await so navigation is immediate.
+      baseAxios.post("/auth/logout").catch(() => {
+        // Ignore network errors for logout; user is already logged out client-side.
+      });
+
+      // Navigate to login after client state is cleared.
       navigate("/login", { replace: true });
-      setTimeout(() => {
-        dispatch(logout());
-        localStorage.clear();
-        sessionStorage.clear();
-      }, 100); // Delay to allow navigation before clearing auth
     } catch {
       // Handle error
       console.error("Logout failed");
@@ -90,7 +98,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="flex bg-gray-50 overflow-hidden min-h-screen">
       {/* Sidebar */}
-      <aside
+      <motion.aside
         className={`relative bg-white border-r border-gray-200 flex flex-col py-6 transition-all duration-500 ease-in-out ${
           collapsed ? "w-[80px]" : "w-[240px]"
         }`}
@@ -98,26 +106,33 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           minWidth: collapsed ? 80 : 240,
           maxWidth: collapsed ? 80 : 240,
         }}
+        initial={shouldReduceMotion ? undefined : { x: -8, opacity: 0 }}
+        animate={shouldReduceMotion ? undefined : { x: 0, opacity: 1 }}
+        transition={{ duration: 0.36 }}
       >
-        <button
+        <motion.button
           className={`absolute top-6 right-0 translate-x-1/2 ${COLOR_CLASSES.bgPrimary} text-white rounded-full shadow-lg w-8 h-8 flex items-center justify-center focus:outline-none z-10 transition-all duration-300 hover:cursor-pointer`}
           onClick={() => setCollapsed((c) => !c)}
           title={collapsed ? "Expand" : "Collapse"}
           style={{ transition: "right 0.3s" }}
+          animate={collapsed ? { rotate: 0 } : { rotate: 180 }}
+          transition={{ duration: 0.28 }}
         >
           {collapsed ? (
             <ChevronRightIcon fontSize="medium" />
           ) : (
             <ChevronLeftIcon fontSize="medium" />
           )}
-        </button>
-        <div
+        </motion.button>
+        <motion.div
+          whileHover={shouldReduceMotion ? undefined : { scale: 1.03 }}
+          transition={{ duration: 0.14 }}
           className={`font-bold px-6 mb-8 text-2xl transition-all duration-100 ${
             collapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
           }`}
         >
           Admin
-        </div>
+        </motion.div>
         <ul className="flex-1 space-y-1">
           {navItems.map((item) => (
             <li className="w-full" key={item.label}>
@@ -167,7 +182,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="font-semibold text-sm">Online Tutoring</div>
           <div className="text-xs text-gray-400">Version: 1.0.0.11</div>
         </div>
-      </aside>
+      </motion.aside>
       {/* Main Content */}
       <main
         className="flex-1"

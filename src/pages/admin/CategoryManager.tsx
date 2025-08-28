@@ -15,7 +15,11 @@ import {
   deleteSubcategory,
   deleteCourse,
 } from "../../features/category/categorySlice";
-import type { NodeType } from "../../features/category/categorySlice";
+import type {
+  NodeType,
+  CategoryNode,
+  Course,
+} from "../../features/category/categorySlice";
 import FolderIcon from "@mui/icons-material/Folder";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -25,6 +29,8 @@ import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { toast } from "react-hot-toast";
 import { getImageUrl } from "../../constants/config";
+import { findNodeById } from "../../utils/category";
+import SkeletonGrid from "../../components/shared/SkeletonGrid";
 
 interface NavigationPath {
   id: string;
@@ -47,7 +53,7 @@ const CategoryManager: React.FC = () => {
   const [viewingLevel, setViewingLevel] = useState<"categories" | "children">(
     "categories"
   );
-  const [currentParent, setCurrentParent] = useState<any | null>(null);
+  const [currentParent, setCurrentParent] = useState<CategoryNode | null>(null);
 
   // Modal states
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -57,7 +63,7 @@ const CategoryManager: React.FC = () => {
   const [showEditChildModal, setShowEditChildModal] = useState(false);
 
   // Edit states
-  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editingItem, setEditingItem] = useState<CategoryNode | null>(null);
   const [editItemType, setEditItemType] = useState<
     "category" | "subcategory" | "course" | null
   >(null);
@@ -123,10 +129,10 @@ const CategoryManager: React.FC = () => {
     setCurrentPage(1); // Reset to first page when changing items per page
   };
 
-  const navigateToChildren = (item: any) => {
-    const itemType = item.categoryId ? "category" : "subcategory";
-    const itemId = item.categoryId || item.subcategoryId;
-    const itemName = item.categoryName || item.subcategoryName;
+  const navigateToChildren = (item: CategoryNode) => {
+    const itemType: NodeType = item.categoryId ? "category" : "subcategory";
+    const itemId = (item.categoryId ?? item.subcategoryId)?.toString() || "";
+    const itemName = item.categoryName || item.subcategoryName || "";
 
     setNavigationPath((prev) => [
       ...prev,
@@ -154,12 +160,15 @@ const CategoryManager: React.FC = () => {
     } else {
       const parentItem = newPath[newPath.length - 1];
       // Find the parent item in categories to set as current parent
-      const findItemInCategories = (categories: any[], id: string): any => {
+      const findItemInCategories = (
+        categories: CategoryNode[],
+        id: string
+      ): CategoryNode | null => {
         for (const cat of categories) {
-          if (cat.categoryId === id) return cat;
+          if (cat.categoryId?.toString() === id) return cat;
           if (cat.subcategories) {
             for (const sub of cat.subcategories) {
-              if (sub.subcategoryId === id) return sub;
+              if (sub.subcategoryId?.toString() === id) return sub;
             }
           }
         }
@@ -188,7 +197,7 @@ const CategoryManager: React.FC = () => {
     const isSubcategory = !!currentParent.subcategoryId;
 
     // Get current children to understand the context
-    const children = isCategory
+    const children: CategoryNode[] | Course[] = isCategory
       ? [
           ...(currentParent.subcategories || []),
           ...(currentParent.courses || []),
@@ -209,11 +218,11 @@ const CategoryManager: React.FC = () => {
     }
 
     // Items exist - determine what types are present
-    const hasSubcategories = children.some(
-      (child) => child.subcategoryId || child.subcategoryName
+    const hasSubcategories = (children as CategoryNode[]).some(
+      (child) => !!(child as CategoryNode).subcategoryId
     );
-    const hasCourses = children.some(
-      (child) => child.classId || child.className
+    const hasCourses = (children as Course[]).some(
+      (child) => !!(child as Course).classId
     );
 
     if (hasSubcategories && !hasCourses) {
@@ -283,7 +292,7 @@ const CategoryManager: React.FC = () => {
   };
 
   const handleEditClick = (
-    item: any,
+    item: CategoryNode,
     itemType: "category" | "subcategory" | "course"
   ) => {
     setEditingItem(item);
@@ -296,14 +305,16 @@ const CategoryManager: React.FC = () => {
     } else {
       // For editing subcategories and courses, we'll populate the edit form differently
       // depending on the type being edited
-      if (item.subcategoryName) {
+      if ((item as CategoryNode).subcategoryName) {
         // Editing a subcategory
-        setNewSubcategoryName(item.subcategoryName || "");
-        setNewSubcategoryDefinition(item.subcategoryDefinition || "");
+        setNewSubcategoryName((item as CategoryNode).subcategoryName || "");
+        setNewSubcategoryDefinition(
+          (item as CategoryNode).subcategoryDefinition || ""
+        );
       } else {
         // Editing a course
-        setNewCourseName(item.className || "");
-        setNewCourseFullName(item.classFullname || "");
+        setNewCourseName((item as Course).className || "");
+        setNewCourseFullName((item as Course).classFullname || "");
       }
       setShowEditChildModal(true);
     }
@@ -396,8 +407,11 @@ const CategoryManager: React.FC = () => {
     setAddSubcategoryError(null);
 
     try {
-      const parentId = currentParent.categoryId || currentParent.subcategoryId;
-      const parentType = currentParent.categoryId ? "category" : "subcategory";
+      const parentId = (currentParent.categoryId ??
+        currentParent.subcategoryId) as number;
+      const parentType: NodeType = currentParent.categoryId
+        ? "category"
+        : "subcategory";
 
       console.log("Creating subcategory with:", {
         subcategoryName: newSubcategoryName.trim(),
@@ -422,64 +436,27 @@ const CategoryManager: React.FC = () => {
       resetSubcategoryForm();
 
       // Refresh categories data
-      await dispatch(fetchCategories()).unwrap();
+      const fetched = await dispatch(fetchCategories()).unwrap();
+      const freshCategories: CategoryNode[] = Array.isArray(fetched)
+        ? fetched
+        : fetched?.data ?? [];
 
-      // Force UI update by re-navigating to current parent
+      // Try to synchronously locate the refreshed parent and restore navigation path
       if (currentParent && navigationPath.length > 0) {
-        // Store current navigation path before clearing
         const currentNavigationPath = [...navigationPath];
+        const lastPathItem =
+          currentNavigationPath[currentNavigationPath.length - 1];
 
-        // Temporarily clear current parent to force re-render
-        setCurrentParent(null);
-        setViewingLevel("categories");
-
-        // Re-navigate to the same location after a brief delay
-        setTimeout(() => {
-          const lastPathItem =
-            currentNavigationPath[currentNavigationPath.length - 1];
-          // Find the updated parent in the fresh categories
-          const findParentById = (
-            cats: any[],
-            id: string,
-            type: string
-          ): any => {
-            for (const cat of cats) {
-              if (type === "category" && cat.categoryId?.toString() === id)
-                return cat;
-              if (cat.subcategories) {
-                for (const sub of cat.subcategories) {
-                  if (
-                    type === "subcategory" &&
-                    sub.subcategoryId?.toString() === id
-                  )
-                    return sub;
-                  if (sub.children) {
-                    for (const child of sub.children) {
-                      if (
-                        type === "subcategory" &&
-                        child.subcategoryId?.toString() === id
-                      )
-                        return child;
-                    }
-                  }
-                }
-              }
-            }
-            return null;
-          };
-
-          const refreshedParent = findParentById(
-            categories,
-            lastPathItem.id,
-            lastPathItem.type
-          );
-          if (refreshedParent) {
-            // Restore the exact navigation path
-            setNavigationPath(currentNavigationPath);
-            setCurrentParent(refreshedParent);
-            setViewingLevel("children");
-          }
-        }, 100);
+        const refreshedParent = findNodeById(
+          freshCategories,
+          lastPathItem.id,
+          lastPathItem.type
+        );
+        if (refreshedParent) {
+          setNavigationPath(currentNavigationPath);
+          setCurrentParent(refreshedParent);
+          setViewingLevel("children");
+        }
       }
     } catch (err: any) {
       console.error("Subcategory creation error:", err);
@@ -523,8 +500,11 @@ const CategoryManager: React.FC = () => {
     setAddCourseError(null);
 
     try {
-      const parentId = currentParent.categoryId || currentParent.subcategoryId;
-      const parentType = currentParent.categoryId ? "category" : "subcategory";
+      const parentId = (currentParent.categoryId ??
+        currentParent.subcategoryId) as number;
+      const parentType: NodeType = currentParent.categoryId
+        ? "category"
+        : "subcategory";
 
       // Create a FileList-like object from the individual files
       const dataTransfer = new DataTransfer();
@@ -546,65 +526,27 @@ const CategoryManager: React.FC = () => {
       setShowAddCourseModal(false);
       resetCourseForm();
 
-      // Refresh categories data
-      await dispatch(fetchCategories()).unwrap();
+      // Refresh categories data and use returned payload to restore navigation
+      const fetched = await dispatch(fetchCategories()).unwrap();
+      const freshCategories: CategoryNode[] = Array.isArray(fetched)
+        ? fetched
+        : fetched?.data ?? [];
 
-      // Force UI update by re-navigating to current parent
       if (currentParent && navigationPath.length > 0) {
-        // Store current navigation path before clearing
         const currentNavigationPath = [...navigationPath];
+        const lastPathItem =
+          currentNavigationPath[currentNavigationPath.length - 1];
 
-        // Temporarily clear current parent to force re-render
-        setCurrentParent(null);
-        setViewingLevel("categories");
-
-        // Re-navigate to the same location after a brief delay
-        setTimeout(() => {
-          const lastPathItem =
-            currentNavigationPath[currentNavigationPath.length - 1];
-          // Find the updated parent in the fresh categories
-          const findParentById = (
-            cats: any[],
-            id: string,
-            type: string
-          ): any => {
-            for (const cat of cats) {
-              if (type === "category" && cat.categoryId?.toString() === id)
-                return cat;
-              if (cat.subcategories) {
-                for (const sub of cat.subcategories) {
-                  if (
-                    type === "subcategory" &&
-                    sub.subcategoryId?.toString() === id
-                  )
-                    return sub;
-                  if (sub.children) {
-                    for (const child of sub.children) {
-                      if (
-                        type === "subcategory" &&
-                        child.subcategoryId?.toString() === id
-                      )
-                        return child;
-                    }
-                  }
-                }
-              }
-            }
-            return null;
-          };
-
-          const refreshedParent = findParentById(
-            categories,
-            lastPathItem.id,
-            lastPathItem.type
-          );
-          if (refreshedParent) {
-            // Restore the exact navigation path
-            setNavigationPath(currentNavigationPath);
-            setCurrentParent(refreshedParent);
-            setViewingLevel("children");
-          }
-        }, 100);
+        const refreshedParent = findNodeById(
+          freshCategories,
+          lastPathItem.id,
+          lastPathItem.type
+        );
+        if (refreshedParent) {
+          setNavigationPath(currentNavigationPath);
+          setCurrentParent(refreshedParent);
+          setViewingLevel("children");
+        }
       }
     } catch (err: any) {
       console.error("Course creation error:", err);
@@ -647,7 +589,7 @@ const CategoryManager: React.FC = () => {
   };
 
   const handleDeleteChild = async (
-    item: any,
+    item: CategoryNode,
     itemType: "subcategory" | "course"
   ) => {
     if (!confirm(`Are you sure you want to delete this ${itemType}?`)) {
@@ -657,10 +599,12 @@ const CategoryManager: React.FC = () => {
     try {
       if (itemType === "subcategory") {
         await dispatch(
-          deleteSubcategory(item.subcategoryId.toString())
+          deleteSubcategory((item.subcategoryId as number).toString())
         ).unwrap();
       } else {
-        await dispatch(deleteCourse(item.classId.toString())).unwrap();
+        await dispatch(
+          deleteCourse((item.classId as number).toString())
+        ).unwrap();
       }
 
       toast.success(
@@ -669,65 +613,27 @@ const CategoryManager: React.FC = () => {
         } deleted successfully!`
       );
 
-      // Refresh categories data
-      await dispatch(fetchCategories()).unwrap();
+      // Refresh categories data and restore navigation using payload
+      const fetched = await dispatch(fetchCategories()).unwrap();
+      const freshCategories: CategoryNode[] = Array.isArray(fetched)
+        ? fetched
+        : fetched?.data ?? [];
 
-      // Force UI update by re-navigating to current parent
       if (currentParent && navigationPath.length > 0) {
-        // Store current navigation path before clearing
         const currentNavigationPath = [...navigationPath];
+        const lastPathItem =
+          currentNavigationPath[currentNavigationPath.length - 1];
 
-        // Temporarily clear current parent to force re-render
-        setCurrentParent(null);
-        setViewingLevel("categories");
-
-        // Re-navigate to the same location after a brief delay
-        setTimeout(() => {
-          const lastPathItem =
-            currentNavigationPath[currentNavigationPath.length - 1];
-          // Find the updated parent in the fresh categories
-          const findParentById = (
-            cats: any[],
-            id: string,
-            type: string
-          ): any => {
-            for (const cat of cats) {
-              if (type === "category" && cat.categoryId?.toString() === id)
-                return cat;
-              if (cat.subcategories) {
-                for (const sub of cat.subcategories) {
-                  if (
-                    type === "subcategory" &&
-                    sub.subcategoryId?.toString() === id
-                  )
-                    return sub;
-                  if (sub.children) {
-                    for (const child of sub.children) {
-                      if (
-                        type === "subcategory" &&
-                        child.subcategoryId?.toString() === id
-                      )
-                        return child;
-                    }
-                  }
-                }
-              }
-            }
-            return null;
-          };
-
-          const refreshedParent = findParentById(
-            categories,
-            lastPathItem.id,
-            lastPathItem.type
-          );
-          if (refreshedParent) {
-            // Restore the exact navigation path
-            setNavigationPath(currentNavigationPath);
-            setCurrentParent(refreshedParent);
-            setViewingLevel("children");
-          }
-        }, 100);
+        const refreshedParent = findNodeById(
+          freshCategories,
+          lastPathItem.id,
+          lastPathItem.type
+        );
+        if (refreshedParent) {
+          setNavigationPath(currentNavigationPath);
+          setCurrentParent(refreshedParent);
+          setViewingLevel("children");
+        }
       }
     } catch (err: any) {
       toast.error(err?.message || `Failed to delete ${itemType}.`);
@@ -759,7 +665,7 @@ const CategoryManager: React.FC = () => {
 
       await dispatch(
         updateCategory({
-          id: editingItem.categoryId.toString(),
+          id: (editingItem.categoryId as number).toString(),
           formData: formData,
         })
       ).unwrap();
@@ -810,7 +716,7 @@ const CategoryManager: React.FC = () => {
 
         await dispatch(
           updateSubcategory({
-            id: editingItem.subcategoryId.toString(),
+            id: (editingItem.subcategoryId as number).toString(),
             data: updateData,
           })
         ).unwrap();
@@ -832,7 +738,7 @@ const CategoryManager: React.FC = () => {
 
         await dispatch(
           updateCourse({
-            id: editingItem.classId.toString(),
+            id: (editingItem.classId as number).toString(),
             formData,
           })
         ).unwrap();
@@ -846,65 +752,27 @@ const CategoryManager: React.FC = () => {
       setShowEditChildModal(false);
       resetEditForm();
 
-      // Refresh categories data
-      await dispatch(fetchCategories()).unwrap();
+      // Refresh categories data and restore navigation using returned payload
+      const fetched = await dispatch(fetchCategories()).unwrap();
+      const freshCategories: CategoryNode[] = Array.isArray(fetched)
+        ? fetched
+        : fetched?.data ?? [];
 
-      // Force UI update by re-navigating to current parent
       if (currentParent && navigationPath.length > 0) {
-        // Store current navigation path before clearing
         const currentNavigationPath = [...navigationPath];
+        const lastPathItem =
+          currentNavigationPath[currentNavigationPath.length - 1];
 
-        // Temporarily clear current parent to force re-render
-        setCurrentParent(null);
-        setViewingLevel("categories");
-
-        // Re-navigate to the same location after a brief delay
-        setTimeout(() => {
-          const lastPathItem =
-            currentNavigationPath[currentNavigationPath.length - 1];
-          // Find the updated parent in the fresh categories
-          const findParentById = (
-            cats: any[],
-            id: string,
-            type: string
-          ): any => {
-            for (const cat of cats) {
-              if (type === "category" && cat.categoryId?.toString() === id)
-                return cat;
-              if (cat.subcategories) {
-                for (const sub of cat.subcategories) {
-                  if (
-                    type === "subcategory" &&
-                    sub.subcategoryId?.toString() === id
-                  )
-                    return sub;
-                  if (sub.children) {
-                    for (const child of sub.children) {
-                      if (
-                        type === "subcategory" &&
-                        child.subcategoryId?.toString() === id
-                      )
-                        return child;
-                    }
-                  }
-                }
-              }
-            }
-            return null;
-          };
-
-          const refreshedParent = findParentById(
-            categories,
-            lastPathItem.id,
-            lastPathItem.type
-          );
-          if (refreshedParent) {
-            // Restore the exact navigation path
-            setNavigationPath(currentNavigationPath);
-            setCurrentParent(refreshedParent);
-            setViewingLevel("children");
-          }
-        }, 100);
+        const refreshedParent = findNodeById(
+          freshCategories,
+          lastPathItem.id,
+          lastPathItem.type
+        );
+        if (refreshedParent) {
+          setNavigationPath(currentNavigationPath);
+          setCurrentParent(refreshedParent);
+          setViewingLevel("children");
+        }
       }
     } catch (err: any) {
       setEditError(err?.message || `Failed to update ${editItemType}.`);
@@ -932,11 +800,14 @@ const CategoryManager: React.FC = () => {
                 const newPath = navigationPath.slice(0, index + 1);
                 setNavigationPath(newPath);
                 const parentData =
-                  categories.find((cat: any) => cat.categoryId === item.id) ||
+                  categories.find(
+                    (cat) => cat.categoryId?.toString() === item.id
+                  ) ||
                   categories
-                    .flatMap((cat: any) => cat.subcategories || [])
-                    .find((sub: any) => sub.subcategoryId === item.id);
-                setCurrentParent(parentData);
+                    .flatMap((cat) => cat.subcategories || [])
+                    .find((sub) => sub.subcategoryId?.toString() === item.id) ||
+                  null;
+                setCurrentParent(parentData as CategoryNode | null);
                 setViewingLevel("children");
               }}
               className="hover:text-blue-600 transition-colors"
@@ -953,7 +824,7 @@ const CategoryManager: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Add Category Button */}
-        <div className="flex justify-between items-center">
+        <div className="sm:flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900">
             All Categories
           </h2>
@@ -979,9 +850,11 @@ const CategoryManager: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category: any) => (
+            {categories.map((category: CategoryNode) => (
               <div
-                key={category.categoryId}
+                key={
+                  category.categoryId ?? category.id ?? category.categoryName
+                }
                 className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Category Image Cover */}
@@ -1027,7 +900,11 @@ const CategoryManager: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteCategory(category.categoryId.toString());
+                          handleDeleteCategory(
+                            (category.categoryId as number)?.toString() ||
+                              (category.id as string) ||
+                              ""
+                          );
                         }}
                         className="p-1 text-gray-400 hover:text-red-600 transition-colors"
                       >
@@ -1152,12 +1029,17 @@ const CategoryManager: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {children.map((child: any) => {
+            {children.map((child: CategoryNode) => {
               const isSubcategory = !!child.subcategoryId;
 
               return (
                 <div
-                  key={child.subcategoryId || child.classId}
+                  key={
+                    child.subcategoryId ??
+                    child.classId ??
+                    child.id ??
+                    (child.subcategoryName || child.className)
+                  }
                   className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -1259,8 +1141,13 @@ const CategoryManager: React.FC = () => {
 
         {/* Loading state */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="text-gray-400">Loading...</div>
+          <div className="py-6">
+            {/* Keep a skeleton loader for both views */}
+            {viewingLevel === "categories" ? (
+              <SkeletonGrid columns={3} rows={2} />
+            ) : (
+              <SkeletonGrid columns={3} rows={1} />
+            )}
           </div>
         )}
 

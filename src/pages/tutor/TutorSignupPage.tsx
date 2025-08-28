@@ -282,7 +282,7 @@ const TutorSignupPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="bg-white/90 backdrop-blur-none">
       <section
         className=""
         style={{
@@ -292,11 +292,11 @@ const TutorSignupPage: React.FC = () => {
         }}
       >
         <div className="w-full px-5 md:px-28 bg-white/90 backdrop-blur-none">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
+          <div className="max-w-7xl mx-auto px-4 pt-5 pb-8 sm:px-6 sm:py-8">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div
-                className={`${COLOR_CLASSES.bgSecondaryLight} rounded-lg flex items-center justify-around py-8 px-5  mx-5 h-[6rem] md:hidden sticky top-0 z-30`}
-                style={{ position: "sticky", top: 110, zIndex: 30 }}
+                className={`${COLOR_CLASSES.bgSecondaryLight} rounded-lg flex items-center justify-around py-8 px-5  sticky top-10 z-30 mx-5 h-[6rem] md:hidden `}
+               
               >
                 <div className="text-lg">
                   <p className="text-gray-900  font-normal">
@@ -649,7 +649,7 @@ const TutorSignupPage: React.FC = () => {
               </div>
 
               {/* Right Side - Illustration */}
-              <div className="hidden md:flex items-center justify-center">
+              <div className="hidden lg:flex items-center justify-center">
                 <div className="relative w-full max-w-lg">
                   <img
                     src={illustrationImg3}

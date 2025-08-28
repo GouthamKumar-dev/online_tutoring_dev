@@ -357,7 +357,7 @@ const Staffs: React.FC = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 sm:flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Our Staffs</h1>
           <button
             onClick={() => setShowAddModal(true)}
@@ -386,179 +386,166 @@ const Staffs: React.FC = () => {
         {!loading && !error && (
           <>
             {staffs.length > 0 ? (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Staff Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Staff Image
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Staff Details
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Email
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Phone Number
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Qualification
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Experience
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Subjects
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Time Slot
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {staffs.map((staff) => (
-                        <tr key={staff.staffId} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {staff.staffName}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              {staff.staffImageUrl ? (
-                                <img
-                                  src={`${baseAxios.defaults.baseURL}${staff.staffImageUrl}`}
-                                  alt={staff.staffName}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                  <PersonIcon
-                                    className="text-gray-400"
-                                    fontSize="small"
+              <div className="bg-white rounded-2xl shadow-lg p-2 xs:p-4 sm:p-8 border border-violet-100">
+                <div className="bg-white rounded-lg shadow overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full w-full table-fixed divide-y divide-gray-200">
+                      <thead>
+                        <tr className="bg-violet-50 text-violet-700 text-xs xs:text-sm uppercase border-b-2 border-violet-100">
+                          <th className="py-3 px-2 font-semibold w-48 text-left">
+                            Name
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-16 text-left">
+                            Image
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-72 text-left">
+                            Details
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-48 text-left">
+                            Email
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-32 text-left">
+                            Phone Number
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-40 text-left">
+                            Qualification
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-28 text-left">
+                            Experience
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-48 text-left">
+                            Subjects
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-36 text-left">
+                            Time Slot
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-28 text-left">
+                            Status
+                          </th>
+                          <th className="py-3 px-2 font-semibold w-24 text-left">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {staffs.map((staff) => (
+                          <tr
+                            key={staff.staffId}
+                            className="border-b last:border-b-0 hover:bg-violet-50 transition-colors group"
+                          >
+                            <td className="py-3 px-2 text-xs xs:text-sm font-medium text-gray-700 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              {staff.staffName || "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors">
+                              <div className="w-10 h-10">
+                                {staff.staffImageUrl ? (
+                                  <img
+                                    src={`${baseAxios.defaults.baseURL}${staff.staffImageUrl}`}
+                                    alt={staff.staffName}
+                                    className="w-10 h-10 rounded-full object-cover"
                                   />
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 max-w-xs truncate">
-                              {staff.staffDetails}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {staff.staffEmail}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {staff.staffPhoneNumber}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {staff.qualification}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {staff.experience}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 max-w-xs truncate">
-                              {staff.subjects}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {staff.preferredTimeSlot}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <select
-                              value={staff.isPremium ? "PREMIUM" : "NORMAL"}
-                              onChange={(e) =>
-                                handleStatusChange(
-                                  staff.staffId,
-                                  e.target.value === "PREMIUM",
-                                  staff.staffName
-                                )
-                              }
-                              className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-purple-500 ${getStatusColor(
-                                staff.isPremium
-                              )}`}
-                            >
-                              <option value="NORMAL">NORMAL</option>
-                              <option value="PREMIUM">PREMIUM</option>
-                            </select>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEditClick(staff)}
-                                className={`${COLOR_CLASSES.textPrimary} ${COLOR_CLASSES.hoverTextPrimary} p-1 rounded hover:${COLOR_CLASSES.bgSecondary}/10`}
-                                title="Edit"
-                              >
-                                <EditIcon fontSize="small" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleDeleteStaff(
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <PersonIcon
+                                      className="text-gray-400"
+                                      fontSize="small"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              <div className="max-w-full">
+                                {staff.staffDetails || "N/A"}
+                              </div>
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              {staff.staffEmail || "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              {staff.staffPhoneNumber || "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              {staff.qualification || "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors">
+                              {staff.experience
+                                ? `${staff.experience} years`
+                                : "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              {staff.subjects || "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors overflow-hidden truncate">
+                              {staff.preferredTimeSlot || "N/A"}
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors">
+                              <select
+                                value={staff.isPremium ? "PREMIUM" : "NORMAL"}
+                                onChange={(e) =>
+                                  handleStatusChange(
                                     staff.staffId,
+                                    e.target.value === "PREMIUM",
                                     staff.staffName
                                   )
                                 }
-                                className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                                title="Delete"
+                                className={`text-xs font-semibold rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-purple-500 ${getStatusColor(
+                                  staff.isPremium
+                                )}`}
                               >
-                                <DeleteIcon fontSize="small" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                                <option value="NORMAL">NORMAL</option>
+                                <option value="PREMIUM">PREMIUM</option>
+                              </select>
+                            </td>
+                            <td className="py-3 px-2 text-xs xs:text-sm text-gray-600 group-hover:text-violet-700 transition-colors">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleEditClick(staff)}
+                                  className={`${COLOR_CLASSES.textPrimary} ${COLOR_CLASSES.hoverTextPrimary} p-1 rounded hover:${COLOR_CLASSES.bgSecondary}/10`}
+                                  title="Edit"
+                                >
+                                  <EditIcon fontSize="small" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleDeleteStaff(
+                                      staff.staffId,
+                                      staff.staffName
+                                    )
+                                  }
+                                  className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                                  title="Delete"
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* Pagination */}
+                {(pagination?.totalItems ?? 0) > 0 && (
+                  <div className="mt-6">
+                    <Pagination
+                      currentPage={pagination.currentPage}
+                      totalPages={pagination.totalPages}
+                      totalItems={pagination.totalItems}
+                      hasNextPage={pagination.hasNextPage}
+                      hasPrevPage={pagination.hasPrevPage}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
+                    />
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="text-center py-12">
-                  <PersonIcon
-                    className="text-gray-400 mb-4"
-                    style={{ fontSize: 48 }}
-                  />
-                  <p className="text-gray-500">No staff members found.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {!loading && !error && staffs.length > 0 && (
-              <div className="mt-6">
-                <Pagination
-                  currentPage={pagination.currentPage}
-                  totalPages={pagination.totalPages}
-                  totalItems={pagination.totalItems}
-                  hasNextPage={pagination.hasNextPage}
-                  hasPrevPage={pagination.hasPrevPage}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={handlePageChange}
-                  onItemsPerPageChange={handleItemsPerPageChange}
-                />
+              <div className="text-center py-12">
+                <div className="text-gray-500">No staff members found</div>
               </div>
             )}
           </>

@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
@@ -9,7 +10,6 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import baseAxios from "../features/auth/baseAxios";
 
 const navItems = [
-
   {
     label: "Book Requests",
     icon: <MenuBookIcon className="mr-3" fontSize="medium" />,
@@ -25,9 +25,12 @@ const navItems = [
   },
 ];
 
-const ExecutiveLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ExecutiveLayout: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
 
   interface LogoutEvent
     extends React.MouseEvent<HTMLAnchorElement, MouseEvent> {}
@@ -48,7 +51,7 @@ const ExecutiveLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return (
     <div className="flex min-h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <aside
+      <motion.aside
         className={`relative bg-white border-r border-gray-200 flex flex-col py-6 transition-all duration-500 ease-in-out ${
           collapsed ? "w-[80px]" : "w-[240px]"
         }`}
@@ -56,26 +59,33 @@ const ExecutiveLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           minWidth: collapsed ? 80 : 240,
           maxWidth: collapsed ? 80 : 240,
         }}
+        initial={shouldReduceMotion ? undefined : { x: -10, opacity: 0 }}
+        animate={shouldReduceMotion ? undefined : { x: 0, opacity: 1 }}
+        transition={{ duration: 0.36 }}
       >
-        <button
+        <motion.button
           className="absolute top-6 right-0 translate-x-1/2 bg-violet-600 text-white rounded-full shadow-lg w-8 h-8 flex items-center justify-center focus:outline-none z-10 transition-all duration-300 hover:cursor-pointer"
           onClick={() => setCollapsed((c) => !c)}
           title={collapsed ? "Expand" : "Collapse"}
           style={{ transition: "right 0.3s" }}
+          animate={collapsed ? { rotate: 0 } : { rotate: 180 }}
+          transition={{ duration: 0.28 }}
         >
           {collapsed ? (
             <ChevronRightIcon fontSize="medium" />
           ) : (
             <ChevronLeftIcon fontSize="medium" />
           )}
-        </button>
-        <div
+        </motion.button>
+        <motion.div
+          whileHover={shouldReduceMotion ? undefined : { scale: 1.03 }}
+          transition={{ duration: 0.14 }}
           className={`font-bold px-6 mb-8 text-2xl transition-all duration-100 ${
             collapsed ? "opacity-0 w-0" : "opacity-100 w-auto"
           }`}
         >
           Executive
-        </div>
+        </motion.div>
         <ul className="flex-1 space-y-1">
           {navItems.map((item) => (
             <li className="w-full" key={item.label}>
@@ -123,7 +133,7 @@ const ExecutiveLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           <div className="font-semibold text-sm">Online Tutoring</div>
           <div className="text-xs text-gray-400">Version: 1.0.0.11</div>
         </div>
-      </aside>
+      </motion.aside>
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
         {/* Topbar notification icon */}

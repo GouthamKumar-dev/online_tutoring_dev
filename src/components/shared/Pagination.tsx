@@ -68,8 +68,11 @@ const Pagination: React.FC<PaginationProps> = ({
 
   const pageNumbers = getPageNumbers();
 
-  if (totalPages <= 1) {
-    return null; // Don't show pagination if there's only one page
+  // Only hide pagination when there are no items at all.
+  // Showing it for a single page helps surface "show per page" controls
+  // and gives users context about total items even when there's one page.
+  if (totalItems === 0) {
+    return null;
   }
 
   return (

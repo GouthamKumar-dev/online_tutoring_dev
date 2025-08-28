@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../app/store";
 import { logout } from "../features/auth/authSlice";
@@ -22,6 +23,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
   const { role, token } = useSelector((state: RootState) => state.auth);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -106,31 +108,44 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Student Navigation Header */}
-      <nav className="bg-white py-4 lg:py-8 shadow-sm sticky top-0 z-40">
+    <>
+      {/* Sidebar and Header  */}
+
+      <motion.nav
+        className="bg-white w-full h-[5rem] py-2 shadow-sm sticky top-0 z-40 md:h-[6.5rem]"
+        initial={shouldReduceMotion ? undefined : { y: -8, opacity: 0 }}
+        animate={shouldReduceMotion ? undefined : { y: 0, opacity: 1 }}
+        transition={{ duration: 0.45 }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-12 md:h-16">
+          <div className="flex justify-between items-center">
             <div className="flex items-center">
               <Link to="/" className="flex-shrink-0 flex items-center">
-                <div className="w-16 h-16 md:w-20 md:h-22 flex items-center justify-center">
+                <motion.div
+                  whileHover={shouldReduceMotion ? undefined : { scale: 1.04 }}
+                  transition={{ duration: 0.18 }}
+                  className="w-16 h-16 md:w-20 md:h-22 flex items-center justify-center"
+                >
                   <img
                     src={Logo}
                     alt="Logo"
                     className="w-full h-full object-contain"
                   />
-                </div>
+                </motion.div>
               </Link>
             </div>
             {/* Right side - Auth buttons */}
             <div className="flex items-center space-x-2 md:space-x-4">
               {/* Mobile menu button */}
               <div className="md:hidden">
-                <button
+                <motion.button
                   onClick={() => setShowMobileMenu(!showMobileMenu)}
                   className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500 transition-colors duration-200"
                   aria-label="Toggle mobile menu"
+                  animate={showMobileMenu ? { rotate: 90 } : { rotate: 0 }}
+                  transition={{ duration: 0.22 }}
                 >
+                  {/* show/hide icons are still conditionally rendered for accessibility */}
                   <svg
                     className={`${showMobileMenu ? "hidden" : "block"} h-6 w-6`}
                     xmlns="http://www.w3.org/2000/svg"
@@ -159,7 +174,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
                       d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                </button>
+                </motion.button>
               </div>
 
               {/* Navigation Links */}
@@ -260,7 +275,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
 
         {/* Mobile menu as sliding drawer with overlay */}
         <div
-          className={`md:hidden fixed inset-0 z-50 transition-all duration-300 ${
+          className={`md:hidden fixed inset-0 z-50 ${
             showMobileMenu ? "pointer-events-auto" : "pointer-events-none"
           }`}
         >
@@ -272,10 +287,11 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
             onClick={() => setShowMobileMenu(false)}
           />
           {/* Drawer */}
-          <div
-            className={`absolute right-0 top-0 h-full w-4/5 max-w-xs bg-white shadow-xl border-l border-gray-200 transform transition-transform duration-300 ${
-              showMobileMenu ? "translate-x-0" : "translate-x-full"
-            }`}
+          <motion.div
+            className={`absolute right-0 top-0 h-full w-4/5 max-w-xs bg-white shadow-xl border-l border-gray-200`}
+            initial={false}
+            animate={showMobileMenu ? { x: 0 } : { x: "100%" }}
+            transition={{ duration: 0.28 }}
           >
             <div className="px-4 pt-4 pb-6 space-y-3">
               <Link
@@ -378,13 +394,13 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
-      </nav>
-
+      </motion.nav>
       {/* Main Content */}
-      <main className="flex-1">{children}</main>
-
+      <main className="flex-1 max-h-[calc(100vh-5rem)] overflow-auto md:max-h-[calc(100vh-6.5rem)]">
+        {children}
+      </main>
       {/* Student Login Modal */}
       {showLoginModal && (
         <StudentLoginModal
@@ -394,7 +410,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children }) => {
           mode="general"
         />
       )}
-    </div>
+    </>
   );
 };
 

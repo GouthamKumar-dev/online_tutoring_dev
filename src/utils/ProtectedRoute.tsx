@@ -17,8 +17,9 @@ const ProtectedRoute = ({
   );
 
   if (!token) {
-    // For any protected route without authentication, show unauthorized page
-    return <Navigate to="/unauthorized" replace />;
+    // If user is not authenticated, redirect to login (not unauthorized)
+    // so actions like logout navigate the user to the login page immediately.
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(role!))
